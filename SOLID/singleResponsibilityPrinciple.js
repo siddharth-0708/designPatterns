@@ -1,0 +1,66 @@
+// 1. SOLID DESIGN PRINCIPLES:
+// Based on these principles (on object oriented programming), design patterns are made. (creational, structural, and Behavioural)
+
+// A) single responsibility principle: 
+// The idea is to give a class/function only one responsibility. If you need to do do extra operations, create a seperate class.
+// Q1. How adding extra responsibility can mess the code?
+// a)Violating this principle can lead to code that is harder to understand, maintain, test, and extend because multiple concerns are mixed in a single class. If we add all responsibility in one class, for changing one responsibility we need to modify the entire class that can include changing the arguments etc. So to have better understanding of the code, we need to seperate the logics.
+
+class UserManager {
+  constructor(userId, name) {
+    this.userId = userId;
+    this.name = name;
+  }
+
+  // Validates the user data
+  validateUser() {
+    return this.userId && this.name;
+  }
+
+  // Sends a notification to the user
+  sendNotification(message) {
+    if (this.validateUser()) {
+      console.log(`Notification sent to ${this.name}: ${message}`);
+    } else {
+      console.log('Invalid user data. Notification not sent.');
+    }
+  }
+}
+
+// Example Usage
+const userManager = new UserManager(1, 'John Doe');
+userManager.sendNotification('Welcome to our service!');
+
+// Here this class has 2 responsibilities. user creation and sending notification. If tomorrow notification logic changes, then i need to modify this class. It is just userManager class so why to change this. Like this we will create several tasks and mess up the code.
+
+// Correct way:
+class User {
+  constructor(userId, name) {
+    this.userId = userId;
+    this.name = name;
+  }
+
+  // Validates the user data
+  validate() {
+    return this.userId && this.name;
+  }
+}
+
+class NotificationService {
+  sendNotification(user, message) {
+    if (user.validate()) {
+      console.log(`Notification sent to ${user.name}: ${message}`);
+    } else {
+      console.log('Invalid user data. Notification not sent.');
+    }
+  }
+}
+
+// Example Usage
+const user = new User(1, 'John Doe');
+const notificationService = new NotificationService();
+notificationService.sendNotification(user, 'Welcome to our service!');
+
+
+
+ 
