@@ -1,0 +1,4 @@
+/*
+A component which is instantiated only once.
+Singleton design pattern is a pattern that implements it.
+*/
