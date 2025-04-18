@@ -24,11 +24,11 @@ OBSERVATIONS:
 3. Js will differentiate between normal function and class function by seeing new keyword on instance creation. If instance is created then function constructor is invoked and becomes an object. 
 */
 
-function PrototypeDemo(name, age){
-    this.name = name;
-    this.age = age;
+function PrototypeDemo(name, age) {
+  this.name = name;
+  this.age = age;
 
-    /*
+  /*
      When you define method inside constructor:
      Every time you create a new instance, a new copy of setName function is created in memory.
      Downside: Memory inefficient if you create many instances, because methods are duplicated.
@@ -39,13 +39,13 @@ function PrototypeDemo(name, age){
 💡   Advantage: Memory efficient and good practice. Only one copy of the method exists, no matter how many instances you create.
      you can now extend this with inheritance.
     */
-    this.setName = function(name){
-        this.name = name;
-    }
+  this.setName = function (name) {
+    this.name = name;
+  };
 }
-PrototypeDemo.prototype.setAge = function(age){
-    this.age = age;
-}
+PrototypeDemo.prototype.setAge = function (age) {
+  this.age = age;
+};
 
 const a = new PrototypeDemo("sid", 31);
 console.log(a.age, a.name);
@@ -263,4 +263,174 @@ It does NOT touch or mess with the prototype chain at all.
 
 .call just assigns, doesn't inherit. .create inherits, doesn't assign.
 
+
+THIS CONCEPT:
+
+Normal functions do not take this from where they are declared. Instead, normal functions take this from where they are called, not where they are written
+
+For arrow functions, this is never determined by how they're called. Instead, arrow functions lock this from where they are defined. This is called "lexical this."
+
+var obj = {
+    a: 10,
+    b: 20,
+    c: () => {
+        return this.a + this.b;
+    }
+};
+
+The moment JavaScript is reading and creating obj:
+
+obj is still being built piece by piece.
+
+JavaScript first sees { a: 10, b: 20, c: (arrow function) }
+
+But obj itself is not fully finished yet.
+
+At that point:
+
+The c function does not know about obj yet.
+
+It can only look outside — outside the object — to find its this.
+
+That's why arrow functions don't automatically pick up obj as this.
+
+📦 Imagine a box (object) being packed:
+You are building a box (obj).
+You put a inside, you put b inside...
+When you're about to put c (arrow function) inside,
+The box is still open — not closed yet — not fully packed.
+The arrow function says:
+"Oh, the box (object) is not closed yet. I will not trust it. I will look outside."
+And outside is the global scope.
+
+
+ok but why then var obj = {
+    a: 10,
+    b: 20,
+    c: () => {
+        return this.a + this.b;
+    }
+};
+
+it points to window? how? it is created inside the object ryt that is equivalent to new Object()?
+
+When you define the arrow function c: () => {}, you are writing it at the time the object is being created, not inside any function.
+👉 So, the surrounding scope (lexical scope) is global (window in browsers).
+Even though the arrow function is inside obj,
+It captures this from outside (window)
+Not from obj, because obj is not a function call, it's just a plain object literal.
+
+function Name(name) {
+    this.name = name;
+
+    function showName() {
+        console.log(this.name);
+    }
+    showName();
+}
+
+here showName() is getting called, and this function 'this' depends on the one who is calling. so this is a normal function call like Name("sid") and not new Name("sid"), hence it will take window.
+normal function 'this' depends on who is calling it. If it is straight call, then it will directly points to window. thats why we do bind to preserve the instance for inner functions.
+
+
+//
+You do new Name("John")
+
+Inside Name:
+
+this is a new object (obj1)
+
+So this.name = "John" correctly sets obj1.name = "John"
+
+Then you declare function showName() and call showName().
+
+BUT — important point:
+
+showName() is a normal function, NOT called like obj1.showName()
+
+In JavaScript, normal function calls (not attached to object) default this to window (or undefined in strict mode).
+
+//
+
+function Name(name) {
+    this.name = name;
+
+    const showName = () => {
+        console.log(this.name);
+    }
+    showName();
+}
+
+hwere arrow function is defined in the Name, so it remembers 'this';
+
+const b = new Name("roh") -- > arrow function remembers 'this' as b;
+const c = new Name("kkk") --> remembers as c
+Name("ll") ==> points to window
+
+POLLYFILL FOR CALL METHOD:
+
+Function.prototype.myCall = function (context, name) {
+    context.fn = this;
+    const result = context.fn(name); 
+    delete context.fn
+
+    return result;
+}
+
+    //IMPORTANT//
+    Remember Obj.c when we call which is a method
+    var obj = {
+    a: 10,
+    b: 20,
+    c: () => {
+        return this.a + this.b;
+    }
+    THIS WILL BE OBJ. SO IN SAME WAY CONTEXT.FN CALL WILL POINT THIS AS THE INSTANCE
+    Instead of calling function directly that will point this to global we store in the context and then call the function so that this refers to the instance.
+
+    //IMPORTANT OBSERVATION
+    Function.prototype.myCall1 = (context, name) => {
+    context.fn = this; // <-- here 'this' is NOT the function!
+
+    this inside the arrow function does NOT point to the function you're calling.
+
+    It points to window (or undefined if 'use strict').
+
+    So you're actually doing:
+
+    javascript
+    Copy
+    Edit
+    context.fn = window; // NOT a function!
+    window is an object, NOT a function.
+
+
+
+    BIND POLLYFILL:
+
+    Function.prototype.myBind = function(context, name){
+    const myFunction = this;
+    const na = name;
+    return function(){
+          myFunction.myCall(context, na);  
+    } 
+    const o = {};
+    const u = Name.myBind(o, "virat");
+    u();
+
+}
+}
+    //APPLY POLLYFILL
+
+    In call, you have individual arguments.
+
+In apply, you have an array — you need to spread it!
+
+Function.prototype.myApply = function(context, argsArray) {
+    context = context || window;
+    context.fn = this;
+    const result = context.fn(...argsArray) ; // spreading the array here
+    delete context.fn;
+    return result;
+}
 */
