@@ -112,10 +112,10 @@ When we do const a = new Array(); a.name or a.methodName js will internally go a
 This is prototype pattern and difference from class based implementation.
 
 //Todo:
-1. write pollyfill for this __proto__ search behavior
+1. write pollyfill for this __proto__ search behavior - Not needed (its internal mech)
 2. what object.create does? - Done
-3. Pollyfill for bind call and apply?
-4. 'this' concept
+3. Pollyfill for bind call and apply? - Done
+4. 'this' concept -  Done
 5. deep copy
 6. How classes work - Done
 
