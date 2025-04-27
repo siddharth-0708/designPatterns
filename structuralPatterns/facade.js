@@ -17,3 +17,47 @@ When you make an online payment, you use a simple payment API.
 Behind the scenes, it’s dealing with authentication, transaction verification, database updates, security, etc.
 You don’t need to worry about all that — the API (facade) handles it.
 */
+
+//payment gateway
+class CardValidator {
+    validateCard(){
+        console.log("card is validated");
+    }
+}
+
+class BalanceChecker {
+    balanceCheck(){
+        console.log("balance is validated");
+    }
+}
+
+class PaymentProcess {
+    processPayment() {
+        console.log("payment is processed");
+    }
+}
+
+class MessageNotification {
+    sendMessage() {
+        console.log("message is send");
+    }
+}
+
+class PaymentFacade {
+    constructor(cardValidator, balanceCheck, paymentProcess, messageNotification){
+        this.cardValidator = cardValidator;
+        this.balanceCheck = balanceCheck;
+        this.paymentProcess = paymentProcess;
+        this.messageNotification = messageNotification;
+    }
+    makePayment(cardnumber, amount){
+        console.log("making payment for ", cardnumber, " ", amount);
+        this.cardValidator.validateCard();
+        this.balanceCheck.balanceCheck();
+        this.paymentProcess.processPayment();
+        this.messageNotification.sendMessage();        
+    }
+}
+
+const a = new PaymentFacade(new CardValidator(), new BalanceChecker(), new PaymentProcess(), new MessageNotification());
+a.makePayment("12234432222", 5000);
