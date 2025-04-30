@@ -1,0 +1,2 @@
+//A memento is a snapshot of the system. Whatever we did with command js, it is easier with memento.
+//Not ideal for larger data sets since memory allocation is there because memento stores every single state as snapshot and is a seperate class.
