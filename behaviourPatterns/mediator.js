@@ -95,6 +95,8 @@ const coach1 = new Coach("cashew", goalMediator1);
 const club1 = new Club("Hyderabad", goalMediator1);
 const club2 = new Club("chennai", goalMediator2);
 
+// player --> mediator --> coach, club- there is no link between player and coach, club and the event
+
 player1.scoredGoal({location: "spain"});
 player1.scoredGoal({location: "italy"});
 player1.scoredGoal({location: "spain"});
