@@ -35,7 +35,7 @@ class Dummy1 extends DummyAbs{
     }
 }
 // const a = new Abs();
-const a = new Dummy1();
-console.log(a.name);
+// const b = new Dummy1();
+// console.log(b.name);
 
 
