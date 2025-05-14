@@ -143,3 +143,87 @@ b.press();
 b.press();
 b.press();
 b.press();
+
+//Pollyfill for promise 
+
+function MyPromise(executor) {
+  let fullfilled = false;
+  let onResolve = null;
+  let val = null;
+  let rejected = false;
+  let onReject = null;
+  let error = null;
+  function resolve(data) {
+    fullfilled = true;
+    val = data;
+    if (typeof onResolve === "function") {
+      onResolve(val);
+    }
+  }
+  function reject(data) {
+    rejected = true;
+    error = data;
+    if (typeof onReject === "function") {
+      onReject(error);
+    }
+  }
+  this.then = (callback) => {
+    onResolve = callback;
+    if (fullfilled) {
+      callback(val);
+    }
+    return this; // for chaining
+  };
+  this.catch = (callback) => {
+    onReject = callback;
+    if (rejected) {
+      callback(error);
+    }
+    return this;
+  };
+  try {
+    executor(resolve, reject);
+  } catch {
+    throw new Error("error");
+  }
+}
+const a = new MyPromise((resolve, reject) => {
+  const sid = () => {
+    console.log("...k sidd");
+  };
+  setTimeout(() => {
+    resolve(sid);
+  }, 2000);
+});
+const b = new MyPromise((resolve, reject) => {
+  resolve("this is chaininggg");
+});
+a.then((result) => {
+  result();
+  return new MyPromise((resolve, reject) => {
+    resolve("this is chaininggg");
+  }).then((result) => {
+    console.log(result);
+  });
+});
+//TODO: CHECK then chaining code
+
+this.then = (callback) => {
+    return new MyPromise((resolve, reject) => {
+        onResolve = (val) => {
+          try {
+            const result = callback(val); // If the result is a Promise-like object
+            if (result instanceof MyPromise) {
+              result.then(resolve).catch(reject);
+            } else {
+              resolve(result);
+            }
+          } catch (err) {
+            reject(err);
+          }
+        };
+        if (fullfilled) {
+          onResolve(val);
+        }
+      });
+    };
