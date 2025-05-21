@@ -227,3 +227,37 @@ this.then = (callback) => {
         }
       });
     };
+
+    //Map pollyfill:
+
+    Array.prototype.myMap = function (callback) {
+      const data = this;
+      const result = [];
+      for (let index = 0; index < data.length; index++) {
+        const element = data[index];
+        const r = callback(element, index);
+        result.push(r);
+      }
+      return result;
+    };
+
+    //Filter pollyfill:
+
+    Array.prototype.myFilter = function(callback) {
+      const data = this;
+      const result = [];
+    
+      for (let index = 0; index < data.length; index++) {
+        const element = data[index];
+        const r = callback(element, index);
+        if (r) {
+          result.push(element);
+        }
+      }
+    
+      return result;
+    };
+    
+    const b = [1, 3, 5, 3, 2, 8].myFilter((data, index) => data % 2 === 0);
+    console.log(b); // Output: [2, 8]
+    
