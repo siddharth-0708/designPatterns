@@ -1,0 +1,278 @@
+
+# JavaScript Promises & Async/Await — Full Notes
+
+---
+
+## 1. Async / Await
+
+### `async`
+Marks a function as asynchronous — it **always returns a Promise**.
+
+```js
+async function f() {}
+console.log(f()); // Promise
+```
+
+### `await`
+Pauses execution until the promise resolves.
+
+```js
+const data = await fetchData();
+```
+
+- Must be used **inside async functions** (except top-level in ES modules).
+
+---
+
+## 2. Promise Basics
+
+- Represents a value **available now, later, or never**.
+- States:
+  - **pending**
+  - **fulfilled**
+  - **rejected**
+
+---
+
+## 3. Promise Chaining
+
+- Every `.then()` **returns a new Promise**.
+- The return value of a callback determines the **next Promise’s resolution**.
+
+### Normal Value:
+
+```js
+p.then(v => 10)
+```
+Next `.then()` resolves with `10`.
+
+### Returning a Promise:
+
+```js
+p.then(v => new Promise(res => res(20)))
+```
+Next `.then()` waits for inner promise resolution → `20`.
+
+---
+
+## 4. Try/Catch in `.then()`
+
+```js
+p.then(() => { throw "err"; })
+```
+- If callback throws, **next promise must reject**.  
+- Implemented as:
+
+```js
+try {
+    const result = callback(value);
+    resolveNext(result);
+} catch(err){
+    rejectNext(err);
+}
+```
+
+---
+
+## 5. Why store callbacks in arrays?
+
+```js
+p.then(a);
+p.then(b);
+```
+
+- Multiple callbacks must run after resolution.
+- Array allows storing multiple `.then()` callbacks.
+- Simplified polyfill: only supports one callback.
+
+---
+
+## 6. Nested Promises
+
+```js
+const a = new Promise(resolve => {
+    const b = new Promise(res => res(1));
+    b.then(resolve);
+});
+```
+
+- Outer promise `a` resolves with inner promise `b`’s value.
+
+---
+
+## 7. Promise Resolution Procedure
+
+- `.then()` callback always runs.
+- If callback returns:
+  - **Normal value** → resolve next promise with it.
+  - **Promise** → next promise adopts inner promise’s state.
+
+---
+
+## 8. Promise.resolve() vs Promise.reject()
+
+| API | Behavior |
+|-----|----------|
+| `Promise.resolve(x)` | If x is a promise → adopt/unwrap it |
+| `Promise.reject(x)` | Always rejects with x directly (no adoption) |
+
+### Examples:
+
+```js
+Promise.resolve(Promise.reject(4))
+  .catch(console.log); // logs 4
+
+Promise.reject(Promise.resolve(5))
+  .catch(console.log); // logs Promise { 5 }
+```
+
+---
+
+## 9. Mypromise Polyfill — Full Implementation
+
+```js
+function Mypromise(callback){
+    let fulfilled = false;
+    let rejected = false;
+    let value = null;
+    let error = null;
+
+    let onResolve = null;
+    let onReject = null;
+
+    const resolve = function(val){
+        if (fulfilled || rejected) return;
+        fulfilled = true;
+        value = val;
+        if(onResolve) onResolve(val);
+    }
+
+    const reject = function(err){
+        if (fulfilled || rejected) return;
+        rejected = true;
+        error = err;
+        if(onReject) onReject(err);
+    }
+
+    this.then = function(resultCallback){
+        return new Mypromise((nextResolve, nextReject)=>{
+            const functionResolver = function(result){
+                try {
+                    const result1 = resultCallback(result);
+                    if(result1 instanceof Mypromise){
+                        result1.then(nextResolve).catch(nextReject);
+                    } else {
+                        nextResolve(result1);
+                    }
+                } catch (err) {
+                    nextReject(err);
+                }
+            }
+            if(fulfilled){
+                functionResolver(value)
+            } else {
+                onResolve = functionResolver;
+            }
+        });
+    }
+
+    this.catch = function(resultCallback){
+        return new Mypromise((nextResolve, nextReject)=>{
+            const functionRejecter = function(err){
+                try {
+                    const result1 = resultCallback(err);
+                    if(result1 instanceof Mypromise){
+                        result1.then(nextResolve).catch(nextReject);
+                    } else {
+                        nextResolve(result1);
+                    }
+                } catch (err2) {
+                    nextReject(err2);
+                }
+            }
+            if(rejected){
+                functionRejecter(error)
+            } else {
+                onReject = functionRejecter;
+            }
+        });
+    }
+
+    try {
+        callback(resolve, reject);
+    } catch (err) {
+        reject(err);
+    }
+}
+
+// Static resolve
+Mypromise.resolve = function(value){
+    if (value instanceof Mypromise) {
+        return value; // adopt inner Mypromise
+    }
+    if (value instanceof Promise) {
+        // adopt native Promise
+        return new Mypromise((resolve, reject)=>{
+            value.then(resolve).catch(reject);
+        });
+    }
+    return new Mypromise(resolve => resolve(value));
+}
+
+// Static reject
+Mypromise.reject = function(reason){
+    return new Mypromise((_, reject)=> reject(reason));
+}
+```
+
+---
+
+## 10. Key Rules for Mypromise / Promises
+
+1. `.then()` always returns a **new promise**.  
+2. Callback results:
+   - Normal value → next promise resolved with it
+   - Promise → next promise adopts its state  
+3. `.catch()` works the same but handles **rejection**.  
+4. `Promise.resolve(promise)` → adopt inner promise.  
+5. `Promise.reject(promise)` → reject immediately with promise as reason.  
+
+---
+
+## 11. Example Usage
+
+```js
+// Normal chaining
+new Mypromise(res => res(5))
+  .then(x => x + 10)
+  .then(console.log); // 15
+
+// Error handling
+new Mypromise((res, rej)=> rej("oops"))
+  .catch(e => "fixed")
+  .then(console.log); // "fixed"
+
+// Returning a Mypromise inside then
+new Mypromise(res => res(3))
+  .then(x => new Mypromise(r => r(x+2)))
+  .then(console.log); // 5
+
+// Resolve adopts inner promise
+Mypromise.resolve(Mypromise.reject(4))
+  .catch(console.log); // 4
+```
+
+---
+
+## 12. Mental Model
+
+- **Promise** = container for future value  
+- `.then()` = unwraps value / chains promise  
+- `.catch()` = handles rejection  
+- `Promise.resolve()` = unwrap inner promise  
+- `Promise.reject()` = never unwraps  
+- Each `.then()` / `.catch()` = **new promise**  
+
+---
+
+**End of Notes**
