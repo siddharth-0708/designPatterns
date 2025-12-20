@@ -1,0 +1,179 @@
+# JavaScript Event Loop, Rendering Engine, RAF, Frames & GPU
+## A Complete Mental Model (Deep Technical Notes)
+
+These notes explain **how JavaScript execution, browser scheduling, rendering, frames, and GPU work together**.  
+They are written to build a **correct mental model**, not just surface knowledge.
+
+---
+
+## 1. The Fundamental Problem Browsers Solve
+
+Browsers must do all of the following **on a single main thread**:
+
+- Execute JavaScript
+- Respond to user input
+- Update the DOM
+- Render visuals smoothly
+- Synchronize with display refresh (vsync)
+
+The challenge:
+
+> **How do we keep JavaScript predictable, visuals correct, and the UI responsive without race conditions or visual corruption?**
+
+The answer is a carefully designed cooperation between:
+- JavaScript Engine
+- Browser Scheduler (Event Loop)
+- Rendering Engine
+- GPU
+- Display Vsync
+
+---
+
+## 2. Main Actors and Responsibilities
+
+### 2.1 JavaScript Engine (V8 / SpiderMonkey / JavaScriptCore)
+
+Responsibilities:
+- Executes JavaScript
+- Maintains the call stack
+- Runs microtasks
+- Enforces *run-to-completion*
+
+Key properties:
+- JS cannot be interrupted mid-execution
+- JS does not know about frames or vsync
+- JS does not decide when rendering happens
+
+JavaScript only runs **when the browser scheduler allows it**.
+
+---
+
+### 2.2 Browser Scheduler (Event Loop Controller)
+
+Responsibilities:
+- Chooses which task runs next
+- Decides when rendering may occur
+- Coordinates JavaScript and rendering
+- Enforces ordering guarantees
+
+Important:
+- JS engine does NOT pull work
+- Rendering engine does NOT push work
+- Scheduler orchestrates everything
+
+Think of it as the **conductor of the orchestra**.
+
+---
+
+### 2.3 Rendering Engine (Blink / Gecko / WebKit)
+
+Responsibilities:
+- Style calculation
+- Layout (reflow)
+- Paint command generation
+- Layer creation and management
+
+Important clarification:
+- **Paint does NOT mean pixels on screen**
+- Paint means *recording drawing instructions*
+
+---
+
+### 2.4 GPU (Graphics Processing Unit)
+
+Responsibilities:
+- Rasterization (commands → pixels)
+- Layer compositing
+- Applying transforms and opacity
+- Presenting frames to the display
+
+Key facts:
+- GPU never runs JavaScript
+- GPU works with completed frames only
+- GPU can reuse old frames if no new one is ready
+
+---
+
+## 3. Queues and Their Semantic Meaning
+
+### 3.1 Macrotask Queue
+
+Examples:
+- `setTimeout`
+- `setInterval`
+- Click events
+- Network responses
+- Message events
+
+Semantic meaning:
+> **A new external cause**
+
+Properties:
+- Represent new events entering the system
+- Can wait
+- Define frame boundaries
+- Must not interfere with an in-progress frame
+
+---
+
+### 3.2 Microtask Queue
+
+Examples:
+- `Promise.then`
+- `queueMicrotask`
+- `MutationObserver`
+
+Semantic meaning:
+> **Finish everything triggered by the current cause**
+
+Properties:
+- Always run after the current call stack empties
+- Always drained fully
+- Cannot be deferred
+- Are NOT new events
+
+Microtasks are continuations, not causes.
+
+---
+
+### 3.3 requestAnimationFrame (RAF)
+
+Properties:
+- Not a macrotask
+- Not a microtask
+- Not in any task queue
+
+Semantic meaning:
+> **Finalize visual state for the upcoming frame**
+
+RAF exists to align JavaScript execution with rendering and vsync.
+
+---
+
+## 4. Guaranteed Execution Order (Visible Page)
+
+Browsers guarantee the following order:
+
+
+This order is deliberate and essential.
+
+---
+
+## 5. Why Microtasks Run Before RAF
+
+### Problem Without This Rule
+
+```js
+Promise.resolve().then(() => {
+  box.style.width = "200px";
+});
+
+requestAnimationFrame(() => {
+  console.log(box.offsetWidth);
+});
+JS finishes
+→ Microtasks drained
+→ Scheduler checks vsync
+→ RAF callbacks run
+→ Rendering work
+→ GPU presents frame

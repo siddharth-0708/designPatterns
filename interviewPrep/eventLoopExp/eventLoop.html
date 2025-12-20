@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Event Loop Demo</title>
+  </head>
+
+<style>
+  .animcss {
+    animation: moveX 2s ease-in-out forwards infinite;
+  }
+  @keyframes moveX {
+    0% {
+      /* left: 0px; */
+      opacity:1;
+    }
+    50%{
+      opacity:0.1;
+    }
+    100% {
+      /* left: 250px; */
+      opacity:1;
+    }
+  }
+</style>
+  <body>
+    <h1>Event Loop Test</h1>
+    <button onclick="buttonClick()">Click me</button>
+    <button onclick="heavyClick()">heavy click me</button>
+    <button onclick="playAnim()">playAnim click me</button>
+    <div id="anim" style="width: 50px; height: 50px; background-color: blue;"></div>
+    <div
+    id="animcss"
+    style="
+      position: relative;
+      width: 50px;
+      height: 50px;
+      background-color: rgb(240, 23, 34);
+    "
+  ></div>
+    <!-- Your JS file -->
+    <script src="eventLoop.js"></script>
+  </body>
+</html>
