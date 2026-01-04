@@ -1,0 +1,445 @@
+# Browser Performance & Rendering — Practical Notes
+
+## 1. Event Loop Fundamentals
+
+### Tasks
+- **Macrotasks**: events, `setTimeout`, `setInterval`, I/O
+- **Microtasks**: `Promise.then`, `queueMicrotask`, `await`
+
+### Execution Order
+1. Run one macrotask (JS execution)
+2. Flush **all microtasks**
+3. Render (style → layout → paint → composite)
+4. Next macrotask
+
+> Microtasks are part of the same event. Rendering cannot happen until they finish.
+
+---
+
+## 2. DOM Mutations & Dirty Marking
+
+### DOM Mutation
+Any operation that changes DOM structure or data:
+- `appendChild`, `remove`
+- `textContent`
+- `classList.add`
+- `style.width`, `style.height`
+
+### Dirty Marking
+- Browser marks affected nodes as **dirty**
+- Types:
+  - Style dirty
+  - Layout dirty
+  - Paint dirty
+- Happens **synchronously during JS**
+- Layout/paint are deferred
+
+---
+
+## 3. Forced Synchronous Layout (Reflow)
+
+### What triggers it?
+Reading layout while layout is dirty:
+- `offsetWidth`, `offsetHeight`
+- `getBoundingClientRect`
+- `getComputedStyle`
+
+### Example
+```js
+div.style.height = "200px";
+console.log(div.offsetHeight); // forces layout
+```
+
+- Returns **new layout**
+- Paint may still not have happened
+
+---
+
+## 4. Layout Thrashing
+
+### Definition
+Repeated pattern:
+```
+write → read → write → read
+```
+
+### Bad Example
+```js
+for (let i = 0; i < 500; i++) {
+  el.style.width = i + "px";
+  el.offsetWidth;
+}
+```
+
+### Symptoms in DevTools
+- Many `Layout` events
+- Marked as **Forced reflow**
+- Inside a single task
+
+---
+
+## 5. Microtasks & Performance
+
+### Important Rules
+- Microtasks **do not yield** to rendering
+- Browser must finish all microtasks before paint
+
+### Anti-Pattern
+```js
+queueMicrotask(() => {
+  el.offsetWidth;
+});
+```
+
+- Still forces layout
+- Blocks rendering
+- Can hide thrashing
+
+---
+
+## 6. requestAnimationFrame (rAF)
+
+### Why rAF Works
+- Runs once per frame
+- Runs **after layout**
+- Runs **before paint**
+
+### Correct Animation Pattern
+```js
+function animate(time) {
+  el.style.transform = `translateX(${time * 0.1}px)`;
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+```
+
+---
+
+## 7. Layout vs Paint vs Composite
+
+### Dependency Rules
+- Layout changes → usually require paint
+- Paint can happen without layout
+- Composite can happen without layout or paint
+
+### Property Cost Table
+
+| Property | Layout | Paint | Composite |
+|--------|--------|--------|-----------|
+| width / height | ✅ | ✅ | ❌ |
+| top / left | ✅ | ✅ | ❌ |
+| background-color | ❌ | ✅ | ❌ |
+| visibility | ❌ | ✅ | ❌ |
+| opacity | ❌ | ❌ | ✅ |
+| transform | ❌ | ❌ | ✅ |
+
+---
+
+## 8. Expensive Paint
+
+### Causes
+- Large repaint areas
+- Gradients
+- Shadows
+- Filters (`blur`, `drop-shadow`)
+- Frequent repaint animations
+
+### Detection
+- DevTools → Performance → Purple Paint blocks
+- Rendering tab → Paint flashing
+
+---
+
+## 9. Optimizing Paint
+
+### Best Practices
+- Animate `transform` and `opacity`
+- Reduce paint area
+- Use `contain: paint`
+- Avoid animating paint-heavy properties
+- Promote layers with `will-change` (sparingly)
+
+---
+
+## 10. Smooth Animation Checklist
+
+- Main thread under **16ms per frame**
+- No long JS tasks
+- No layout reads during animation
+- Avoid paint-heavy properties
+- Use `requestAnimationFrame`
+- Measure with DevTools
+
+---
+
+## Core Mental Model
+
+> Mutate DOM → browser marks dirty → JS finishes → browser renders  
+> Smooth animations avoid layout, minimize paint, and let the compositor work.
+
+##LayoutThrashing
+
+Layout Thrashing — Performance Notes
+Definition
+
+Layout thrashing occurs when JavaScript repeatedly forces the browser to recalculate layout by interleaving DOM writes and layout reads.
+
+write → read → write → read → ...
+
+
+Each read forces a synchronous layout (reflow), preventing the browser from batching work.
+
+Why It’s Bad
+
+Forces multiple layouts in a single task
+
+Blocks rendering and user input
+
+Causes dropped frames and jank
+
+Scales poorly with loops and animations
+
+What Causes It
+Layout-triggering reads
+
+offsetWidth / offsetHeight
+
+clientWidth / clientHeight
+
+scrollTop / scrollHeight
+
+getBoundingClientRect()
+
+getComputedStyle()
+
+Layout-triggering writes
+
+width / height
+
+top / left
+
+margin / padding
+
+display
+
+DOM insertions/removals
+
+Classic Bad Example
+for (let i = 0; i < 500; i++) {
+  el.style.width = i + "px"; // write
+  el.offsetWidth;            // read → forced layout
+}
+
+
+Result
+
+500 forced synchronous layouts
+
+No batching
+
+Severe performance hit
+
+Hidden Thrashing (Dangerous)
+function update() {
+  el.style.height = compute();
+  helper(); // helper reads layout internally 😬
+}
+
+
+Thrashing can occur without being obvious if layout reads are hidden in utilities or libraries.
+
+Microtasks Do NOT Fix Thrashing
+el.style.width = "100px";
+queueMicrotask(() => el.offsetWidth);
+
+
+Why:
+
+Microtasks run before rendering
+
+Layout is still forced
+
+Can actually make blocking worse
+
+How to Detect Layout Thrashing
+Chrome DevTools
+
+Performance → Record
+
+Look for:
+
+Repeated Layout / Recalculate Style
+
+Marked as “Forced reflow”
+
+Occurring inside JS execution
+
+Console Warning
+[Violation] Forced reflow while executing JavaScript
+
+Correct Patterns (How to Fix It)
+1. Batch Writes, Then Reads
+for (let i = 0; i < 500; i++) {
+  el.style.width = i + "px";
+}
+
+const w = el.offsetWidth; // one layout
+
+2. Batch Reads, Then Writes
+const w = el.offsetWidth;
+
+for (let i = 0; i < 500; i++) {
+  el.style.width = i + "px";
+}
+
+3. Use requestAnimationFrame
+for (let i = 0; i < 500; i++) {
+  el.style.width = i + "px";
+}
+
+requestAnimationFrame(() => {
+  el.offsetWidth; // layout already done
+});
+
+4. Prefer Compositor-Only Properties
+transform
+opacity
+
+
+These avoid layout and paint entirely.
+
+Layout Thrashing vs Normal Layout
+Scenario	Thrashing?
+One layout after JS	❌
+Layout inside rAF	❌
+CSS animation	❌
+Repeated forced layouts in loop	✅
+Performance Rule of Thumb
+
+If you see layout reads inside a loop that also mutates the DOM, you’re probably thrashing.
+
+Final Mental Model
+
+Thrashing happens when JS forces the browser to stop being lazy.
+Batch your reads, batch your writes, and let the browser optimize.
+
+##Yeilding
+
+1. What is Yielding in Browser Performance?
+
+Yielding is the practice of allowing the browser to interrupt long-running JavaScript tasks so it can perform other critical tasks like rendering, handling user input, or processing events.
+
+Without yielding, long-running scripts can block the main thread, leading to:
+
+Frozen UI
+
+Unresponsive pages
+
+Poor user experience
+
+2. Why Yielding Matters
+
+Browsers have a single-threaded main loop for JavaScript, layout, and rendering:
+
+Tasks in the main thread:
+
+JS execution
+
+Style calculations
+
+Layout
+
+Painting
+
+Handling user events
+
+If a script runs for too long without yielding, the frame budget (≈16ms per frame for 60fps) is exceeded → dropped frames → jank.
+
+Goal: Break tasks into smaller chunks and yield control back to the browser periodically.
+
+3. Techniques for Yielding
+a) setTimeout / setInterval
+
+Simple way to break long tasks:
+
+function processChunk(items) {
+  if (items.length === 0) return;
+  let chunk = items.splice(0, 100); // process 100 items
+  // process chunk
+  setTimeout(() => processChunk(items), 0); // yield to browser
+}
+processChunk(hugeArray);
+
+
+Pros: Easy to implement
+
+Cons: setTimeout(fn, 0) has minimum delay (~4ms) and may not be precise.
+
+b) requestIdleCallback
+
+Allows the browser to run your task when it’s idle:
+
+function heavyTask(deadline) {
+  while (deadline.timeRemaining() > 0 && items.length > 0) {
+    processItem(items.shift());
+  }
+  if (items.length > 0) {
+    requestIdleCallback(heavyTask);
+  }
+}
+requestIdleCallback(heavyTask);
+
+
+Pros: Browser-friendly, prevents jank
+
+Cons: Not supported in all browsers (fallback needed)
+
+c) requestAnimationFrame
+
+Schedules work before the next repaint, useful for animations:
+
+function animate() {
+  update();
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+
+Use for UI updates and smooth rendering.
+
+d) Web Workers
+
+Offload heavy computation to a background thread.
+
+Main thread is free → UI stays responsive.
+
+Example:
+
+const worker = new Worker('worker.js');
+worker.postMessage(hugeData);
+worker.onmessage = (e) => console.log(e.data);
+
+4. Best Practices
+
+Break large tasks into smaller chunks.
+
+Use requestIdleCallback for non-urgent work.
+
+Use requestAnimationFrame for UI updates/animations.
+
+Use Web Workers for computation-heavy tasks.
+
+Avoid blocking loops or synchronous XHR calls.
+
+Monitor long tasks in DevTools:
+
+Chrome: Performance tab → Look for tasks > 50ms
+
+Use profiling tools to identify and optimize jank-heavy code.
+
+5. Summary Table
+Technique	Use Case	Pros	Cons
+setTimeout	Break up long loops	Simple	Minimum delay, not precise
+requestIdleCallback	Background, non-critical tasks	Browser-friendly	Not universally supported
+requestAnimationFrame	Animations/UI updates	Smooth frames	Only for visual updates
+Web Workers	Heavy computation	Off main thread	Complex communication setup

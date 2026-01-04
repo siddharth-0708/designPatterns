@@ -28,7 +28,10 @@
     <button onclick="buttonClick()">Click me</button>
     <button onclick="heavyClick()">heavy click me</button>
     <button onclick="playAnim()">playAnim click me</button>
-    <div id="anim" style="width: 50px; height: 50px; background-color: blue;"></div>
+    <button onclick="playCanvasAnim()">Play Canvas Animation</button>
+    <button onclick="layoutThrashing()">Layout Thrashing</button>
+    <h1> 😊</h1>
+    <div id="anim" style="width: 50px; height: 50px; border: 1px solid blue; background-color: transparent; will-change: transform;"></div>
     <div
     id="animcss"
     style="
@@ -38,6 +41,8 @@
       background-color: rgb(240, 23, 34);
     "
   ></div>
+  <div id="layoutThrashing" style="width: 50px; height: 50px; background-color: purple;"></div>
+  <canvas id="canvas" width="800" height="400" style="background:black; border: 2px solid #333;"></canvas>
     <!-- Your JS file -->
     <script src="eventLoop.js"></script>
   </body>
