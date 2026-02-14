@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<header>
+    <style>
+    p {
+        color: yellow;
+        font-size: 20px;
+      }
+    </style>        
+</header>
+<body>
+
+<div id="host"></div>
+<p>Hello world</p>
+
+<script>
+  // Get a normal element
+  const host = document.getElementById("host");
+
+  // Attach shadow DOM
+  const shadow = host.attachShadow({ mode: "open" });
+
+  // Add content inside shadow DOM
+  shadow.innerHTML = `
+    <style>
+      p {
+        color: red;
+        font-size: 20px;
+      }
+    </style>
+    <p>Hello from Shadow DOM</p>
+  `;
+</script>
+
+</body>
+</html>
+
+    <!-- 
+    NOTES:
+
+    The example shows how a Shadow DOM can be attached to a normal HTML element to create an isolated mini-document inside the page. First, a regular <div> element acts as the host element. This host is part of the main DOM, so the browser and the rest of the page can see it normally. However, once a shadow root is attached to it, the host becomes the entry point to a private internal structure that is hidden from the main document.
+
+    The JavaScript uses attachShadow({ mode: "open" }) to create a shadow root. This shadow root is like a separate DOM tree that lives inside the host element. Anything placed inside this shadow root does not mix with the main page’s DOM structure. The "open" mode means the shadow root can be accessed later using JavaScript (host.shadowRoot). If it were "closed", outside scripts would not be able to access it.
+    
+    After creating the shadow root, the code assigns content to shadow.innerHTML. This content includes both HTML markup and CSS styles. The <style> block defines how elements inside the shadow tree should look, and those styles apply only to elements inside that shadow root. For example, the paragraph is styled red inside the Shadow DOM, even if the main page defines different styles for paragraphs.
+    
+    A key concept demonstrated here is style encapsulation. CSS rules written inside the shadow root do not leak out to affect the rest of the page, and global styles from the page do not affect elements inside the shadow root. This prevents style conflicts and makes components predictable and reusable. The paragraph inside the shadow tree keeps its red color regardless of external CSS rules.
+    
+    Overall, the example demonstrates the core purpose of Shadow DOM: encapsulation of structure and styling. It allows developers to create self-contained UI parts that behave independently from the rest of the webpage, improving modularity, reusability, and reliability in web applications. 
+    
+    In closed Shadow DOM mode, the shadow root is attached to a host element but cannot be accessed from outside code through host.shadowRoot, which enforces stronger encapsulation. Developers still work with the shadow root internally by storing its reference when it is created and exposing only controlled ways to interact with the component, such as public methods or properties on the host element. This prevents external scripts from directly modifying the internal structure while allowing the component to function normally. Closed mode improves component isolation and reliability, but it is not a security feature because browsers can still inspect it through developer tools.
+
+    <!DOCTYPE html>
+<html>
+<body>
+
+<div id="host"></div>
+
+<script>
+  const host = document.getElementById("host");
+
+  // Create closed shadow DOM
+  const shadow = host.attachShadow({ mode: "closed" });
+
+  const p = document.createElement("p");
+  p.textContent = "Private content";
+  shadow.appendChild(p);
+
+  // Public method to interact with internal content
+  host.changeText = function(text) {
+    p.textContent = text;
+  };
+
+  console.log(host.shadowRoot); // null (cannot access from outside)
+</script>
+
+<script>
+  // Outside code interacts through public API
+  document.getElementById("host").changeText("Updated from outside!");
+</script>
+
+</body>
+</html>
+
+    -->
